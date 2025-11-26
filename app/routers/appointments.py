@@ -1,5 +1,14 @@
 from fastapi import APIRouter
 from app.database import conn
+from pydantic import BaseModel
+
+class AppointmentCreate(BaseModel):
+    patient_id: int
+    clinic_id: int
+    appointment_time: str
+    reason: str
+    status: str
+
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
@@ -72,4 +81,31 @@ def get_appointment(appointment_id: int):
         "patient_name": row[6],
         "patient_phone": row[7],
         "patient_email": row[8],
+    }
+
+@router.post("/")
+def create_appointment(appt: AppointmentCreate):
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO appointments (patient_id, clinic_id, appointment_time, reason, status)
+        VALUES (%s, %s, %s, %s, %s)
+        RETURNING id;
+    """, (
+        appt.patient_id,
+        appt.clinic_id,
+        appt.appointment_time,
+        appt.reason,
+        appt.status
+    ))
+
+    new_id = cursor.fetchone()[0]
+    conn.commit()
+
+    return {
+        "id": new_id,
+        "patient_id": appt.patient_id,
+        "clinic_id": appt.clinic_id,
+        "appointment_time": appt.appointment_time,
+        "reason": appt.reason,
+        "status": appt.status
     }
