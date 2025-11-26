@@ -15,3 +15,4 @@ def connect_db():
         print("Connected to PostgreSQL successfully.")
     except Exception as error:
         print("Error connecting to PostgreSQL:", error)
+connect_db()
