@@ -98,7 +98,10 @@ def create_appointment(appt: AppointmentCreate):
         appt.status
     ))
 
-    new_id = cursor.fetchone()[0]
+    result = cursor.fetchone()
+    if not result:
+        return {"error": "Failed to create appointment"}
+    new_id = result[0]
     conn.commit()
 
     return {
