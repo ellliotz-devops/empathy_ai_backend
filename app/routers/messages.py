@@ -8,9 +8,7 @@ class MessageCreate(BaseModel):
     clinic_id: int
     patient_id: int
     content: str
-    sender: str  # "patient" or automatically "clinic"
-
-
+# -------------------------
 @router.get("/")
 def get_all_messages():
     cursor = conn.cursor()
@@ -39,7 +37,7 @@ def get_all_messages():
         }
         for r in rows
     ]
-
+# -------------------------
 @router.get("/patient/{patient_id}")
 def get_messages_for_patient(patient_id: int):
     cursor = conn.cursor()
@@ -69,6 +67,7 @@ def get_messages_for_patient(patient_id: int):
         }
         for r in rows
     ]
+# -------------------------
 @router.post("/")
 def create_message(msg: MessageCreate):
     cursor = conn.cursor()
@@ -80,12 +79,12 @@ def create_message(msg: MessageCreate):
     """, (
         msg.clinic_id,
         msg.patient_id,
-        msg.sender,
+        "clinic",  # sender is ALWAYS clinic
         msg.content
     ))
 
     result = cursor.fetchone()
-    
+
     if not result:
         return {"error": "Failed to create message"}
 
@@ -96,8 +95,9 @@ def create_message(msg: MessageCreate):
         "id": new_id,
         "clinic_id": msg.clinic_id,
         "patient_id": msg.patient_id,
-        "sender": msg.sender,
+        "sender": "clinic",
         "content": msg.content,
         "created_at": created_at
     }
+
 
