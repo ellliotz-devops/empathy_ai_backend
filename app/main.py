@@ -3,6 +3,7 @@ from app.database import connect_db
 from app.routers import appointments
 from app.routers import patients
 from app.routers import messages
+from app.routers import clinics
 
 
 app = FastAPI(title="Empathy AI Backend")
@@ -14,6 +15,8 @@ def startup():
 app.include_router(appointments.router)
 app.include_router(patients.router)
 app.include_router(messages.router)
+app.include_router(clinics.router)
+
 
 @app.get("/")
 def root():
