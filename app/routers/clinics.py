@@ -11,6 +11,13 @@ class ClinicCreate(BaseModel):
     email: str | None = None
     timezone: str | None = "UTC"
 
+class ClinicUpdate(BaseModel):
+    name: str | None = None
+    address: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    timezone: str | None = None
+
 
 @router.get("/")
 def get_clinics():
@@ -89,3 +96,35 @@ def create_clinic(clinic: ClinicCreate):
         **clinic.dict()
     }
 
+
+@router.put("/{clinic_id}")
+def update_clinic(clinic_id: int, update: ClinicUpdate):
+    cursor = conn.cursor()
+
+    # Fetch existing clinic
+    cursor.execute("SELECT * FROM clinics WHERE id = %s", (clinic_id,))
+    existing = cursor.fetchone()
+
+    if not existing:
+        return {"error": "Clinic not found"}
+
+    # Build dynamic update fields
+    updates = []
+    values = []
+
+    for field, value in update.dict().items():
+        if value is not None:  # only update fields provided
+            updates.append(f"{field} = %s")
+            values.append(value)
+
+    if not updates:
+        return {"message": "No valid fields provided for update"}
+
+    values.append(clinic_id)
+
+    sql = f"UPDATE clinics SET {', '.join(updates)} WHERE id = %s RETURNING id;"
+    cursor.execute(sql, values)
+
+    conn.commit()
+
+    return {"message": "Clinic updated successfully", "clinic_id": clinic_id}

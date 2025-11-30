@@ -1,10 +1,6 @@
 from fastapi import FastAPI
 from app.database import connect_db
-from app.routers import appointments
-from app.routers import patients
-from app.routers import messages
-from app.routers import clinics
-
+from app.routers import appointments, patients, messages, clinics
 
 app = FastAPI(title="Empathy AI Backend")
 
@@ -17,7 +13,7 @@ app.include_router(patients.router)
 app.include_router(messages.router)
 app.include_router(clinics.router)
 
-
 @app.get("/")
 def root():
     return {"message": "Empathy AI Backend is running!"}
+
