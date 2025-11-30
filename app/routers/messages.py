@@ -1,7 +1,14 @@
 from fastapi import APIRouter
 from app.database import conn
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/messages", tags=["Messages"])
+
+class MessageCreate(BaseModel):
+    clinic_id: int
+    patient_id: int
+    content: str
+    sender: str  # "patient" or automatically "clinic"
 
 
 @router.get("/")
@@ -62,3 +69,35 @@ def get_messages_for_patient(patient_id: int):
         }
         for r in rows
     ]
+@router.post("/")
+def create_message(msg: MessageCreate):
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO messages (clinic_id, patient_id, sender, content)
+        VALUES (%s, %s, %s, %s)
+        RETURNING id, created_at;
+    """, (
+        msg.clinic_id,
+        msg.patient_id,
+        msg.sender,
+        msg.content
+    ))
+
+    result = cursor.fetchone()
+    
+    if not result:
+        return {"error": "Failed to create message"}
+
+    new_id, created_at = result
+    conn.commit()
+
+    return {
+        "id": new_id,
+        "clinic_id": msg.clinic_id,
+        "patient_id": msg.patient_id,
+        "sender": msg.sender,
+        "content": msg.content,
+        "created_at": created_at
+    }
+
