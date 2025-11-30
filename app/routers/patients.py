@@ -11,7 +11,9 @@ class PatientCreate(BaseModel):
 
 router = APIRouter(prefix="/patients", tags=["Patients"])
 
-@router.get("/")
+# -------------------------
+# CREATE PATIENT (POST)
+# -------------------------
 @router.post("/")
 def create_patient(patient: PatientCreate):
     cursor = conn.cursor()
@@ -19,10 +21,21 @@ def create_patient(patient: PatientCreate):
         INSERT INTO patients (full_name, phone, email, date_of_birth, clinic_id)
         VALUES (%s, %s, %s, %s, %s)
         RETURNING id;
-    """, (patient.full_name, patient.phone, patient.email, patient.date_of_birth, patient.clinic_id))
+    """, (
+        patient.full_name,
+        patient.phone,
+        patient.email,
+        patient.date_of_birth,
+        patient.clinic_id
+    ))
 
-    new_id = cursor.fetchone()[0]
+    row = cursor.fetchone()
     conn.commit()
+
+    if row is None:
+        return {"error": "Failed to create patient"}
+
+    new_id = row[0]
 
     return {
         "id": new_id,
@@ -33,20 +46,18 @@ def create_patient(patient: PatientCreate):
         "clinic_id": patient.clinic_id
     }
 
+# -------------------------
+# GET ALL PATIENTS (GET)
+# -------------------------
+@router.get("/")
 def get_patients():
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT 
-            id,
-            full_name,
-            phone,
-            email,
-            date_of_birth,
-            clinic_id
+        SELECT id, full_name, phone, email, date_of_birth, clinic_id
         FROM patients
         ORDER BY full_name ASC;
     """)
-    
+
     rows = cursor.fetchall()
 
     return [
@@ -61,39 +72,14 @@ def get_patients():
         for r in rows
     ]
 
-@router.get("/{patient_id}")
-def get_patient(patient_id: int):
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT id, full_name, phone, email, date_of_birth, clinic_id FROM patients WHERE id = %s",
-        (patient_id,)
-    )
-    result = cursor.fetchone()
-    cursor.close()
-
-    if not result:
-        return {"error": "Patient not found"}
-
-    return {
-        "id": result[0],
-        "full_name": result[1],
-        "phone": result[2],
-        "email": result[3],
-        "date_of_birth": result[4],
-        "clinic_id": result[5]
-    }
-
+# -------------------------
+# GET ONE PATIENT (GET)
+# -------------------------
 @router.get("/{patient_id}")
 def get_patient(patient_id: int):
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT 
-            id,
-            full_name,
-            phone,
-            email,
-            date_of_birth,
-            clinic_id
+        SELECT id, full_name, phone, email, date_of_birth, clinic_id
         FROM patients
         WHERE id = %s
     """, (patient_id,))
