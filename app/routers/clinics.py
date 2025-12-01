@@ -1,6 +1,8 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from app.database import conn
+from psycopg2 import errors
+
 
 router = APIRouter(prefix="/clinics", tags=["Clinics"])
 
@@ -193,3 +195,36 @@ def patch_clinic(clinic_id: int, update: ClinicUpdate):
         "message": "Clinic partially updated successfully",
         "clinic_id": clinic_id
     }
+
+# ------------------------
+# DELETE /clinics/{clinic_id}
+# ------------------------
+
+@router.delete("/{clinic_id}")
+def delete_clinic(clinic_id: int):
+    cursor = conn.cursor()
+
+    # Check if clinic exists
+    cursor.execute("SELECT id FROM clinics WHERE id = %s", (clinic_id,))
+    existing = cursor.fetchone()
+
+    if not existing:
+        cursor.close()
+        return {"error": "Clinic not found"}
+
+    try:
+        cursor.execute("DELETE FROM clinics WHERE id = %s", (clinic_id,))
+        conn.commit()
+
+    except errors.ForeignKeyViolation:
+        conn.rollback()
+        cursor.close()
+        return {
+            "error": "Cannot delete clinic because it still has linked users, patients, or appointments."
+        }
+
+    cursor.close()
+    return {"message": "Clinic deleted successfully", "clinic_id": clinic_id}
+
+
+
