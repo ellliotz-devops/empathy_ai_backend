@@ -4,6 +4,10 @@ from app.database import conn
 
 router = APIRouter(prefix="/clinics", tags=["Clinics"])
 
+# ------------------------
+# Pydantic Models
+# ------------------------
+
 class ClinicCreate(BaseModel):
     name: str
     address: str | None = None
@@ -18,6 +22,10 @@ class ClinicUpdate(BaseModel):
     email: str | None = None
     timezone: str | None = None
 
+
+# ------------------------
+# GET /clinics
+# ------------------------
 
 @router.get("/")
 def get_clinics():
@@ -44,6 +52,10 @@ def get_clinics():
     ]
 
 
+# ------------------------
+# GET /clinics/{clinic_id}
+# ------------------------
+
 @router.get("/{clinic_id}")
 def get_clinic(clinic_id: int):
     cursor = conn.cursor()
@@ -68,6 +80,10 @@ def get_clinic(clinic_id: int):
         "created_at": row[6],
     }
 
+
+# ------------------------
+# POST /clinics
+# ------------------------
 
 @router.post("/")
 def create_clinic(clinic: ClinicCreate):
@@ -96,24 +112,27 @@ def create_clinic(clinic: ClinicCreate):
         **clinic.dict()
     }
 
+# ------------------------
+# PUT /clinics/{clinic_id}
+# ------------------------
 
 @router.put("/{clinic_id}")
 def update_clinic(clinic_id: int, update: ClinicUpdate):
     cursor = conn.cursor()
 
-    # Fetch existing clinic
+    # Check if clinic exists
     cursor.execute("SELECT * FROM clinics WHERE id = %s", (clinic_id,))
     existing = cursor.fetchone()
 
     if not existing:
         return {"error": "Clinic not found"}
 
-    # Build dynamic update fields
+    # Build dynamic list of fields to update
     updates = []
     values = []
 
     for field, value in update.dict().items():
-        if value is not None:  # only update fields provided
+        if value is not None:  
             updates.append(f"{field} = %s")
             values.append(value)
 
@@ -124,7 +143,53 @@ def update_clinic(clinic_id: int, update: ClinicUpdate):
 
     sql = f"UPDATE clinics SET {', '.join(updates)} WHERE id = %s RETURNING id;"
     cursor.execute(sql, values)
-
     conn.commit()
 
-    return {"message": "Clinic updated successfully", "clinic_id": clinic_id}
+    return {
+        "message": "Clinic updated successfully",
+        "clinic_id": clinic_id
+    }
+
+# ------------------------
+# PATCH /clinics/{clinic_id}
+# ------------------------
+
+@router.patch("/{clinic_id}")
+def patch_clinic(clinic_id: int, update: ClinicUpdate):
+    cursor = conn.cursor()
+
+    # Check if the clinic exists
+    cursor.execute("SELECT * FROM clinics WHERE id = %s", (clinic_id,))
+    existing = cursor.fetchone()
+
+    if not existing:
+        return {"error": "Clinic not found"}
+
+    # Build dynamic update list
+    updates = []
+    values = []
+
+    for field, value in update.dict().items():
+        if value is not None:  # Only update fields that were included and not null
+            updates.append(f"{field} = %s")
+            values.append(value)
+
+    if not updates:
+        return {"message": "No fields provided for update"}
+
+    values.append(clinic_id)
+
+    sql = f"""
+        UPDATE clinics
+        SET {', '.join(updates)}
+        WHERE id = %s
+        RETURNING id;
+    """
+
+    cursor.execute(sql, values)
+    conn.commit()
+
+    return {
+        "message": "Clinic partially updated successfully",
+        "clinic_id": clinic_id
+    }
