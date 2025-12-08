@@ -204,7 +204,7 @@ def patch_clinic(clinic_id: int, update: ClinicUpdate):
 def delete_clinic(clinic_id: int):
     cursor = conn.cursor()
 
-    # Check if clinic exists
+    # 1. Check if clinic exists
     cursor.execute("SELECT id FROM clinics WHERE id = %s", (clinic_id,))
     existing = cursor.fetchone()
 
@@ -212,19 +212,40 @@ def delete_clinic(clinic_id: int):
         cursor.close()
         return {"error": "Clinic not found"}
 
-    try:
-        cursor.execute("DELETE FROM clinics WHERE id = %s", (clinic_id,))
-        conn.commit()
+    # 2. Check users linked to this clinic
+    cursor.execute("SELECT COUNT(*) FROM users WHERE clinic_id = %s", (clinic_id,))
+    result = cursor.fetchone()
+    user_count = result[0] if result else 0
 
-    except errors.ForeignKeyViolation:
-        conn.rollback()
+    if user_count > 0:
         cursor.close()
         return {
-            "error": "Cannot delete clinic because it still has linked users, patients, or appointments."
+            "error": "Cannot delete clinic",
+            "reason": f"There are {user_count} user(s) assigned to this clinic.",
+            "action_required": "Reassign or delete users before deleting this clinic."
         }
 
-    cursor.close()
-    return {"message": "Clinic deleted successfully", "clinic_id": clinic_id}
+    # 3. Check patients linked to the clinic
+    cursor.execute("SELECT COUNT(*) FROM patients WHERE clinic_id = %s", (clinic_id,))
+    result = cursor.fetchone()
+    patient_count = result[0] if result else 0
 
+    if patient_count > 0:
+        cursor.close()
+        return {
+            "error": "Cannot delete clinic",
+            "reason": f"There are {patient_count} patient(s) assigned to this clinic.",
+            "action_required": "Reassign or delete patients before deleting this clinic."
+        }
+
+    # 4. If no dependencies, delete clinic
+    cursor.execute("DELETE FROM clinics WHERE id = %s", (clinic_id,))
+    conn.commit()
+    cursor.close()
+
+    return {
+        "message": "Clinic deleted successfully",
+        "clinic_id": clinic_id
+    }
 
 
