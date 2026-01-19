@@ -80,3 +80,32 @@ def get_users():
         }
         for r in rows
     ]
+
+# -------------------------
+# GET /users/{user_id}  (Get User)
+# -------------------------
+
+@router.get("/{user_id}")
+def get_user(user_id: int):
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, full_name, email, phone_number, role, clinic_id, created_at
+        FROM users
+        WHERE id = %s;
+    """, (user_id,))
+
+    row = cursor.fetchone()
+    cursor.close()
+
+    if not row:
+        return {"error": "User not found"}
+
+    return {
+        "id": row[0],
+        "full_name": row[1],
+        "email": row[2],
+        "phone_number": row[3],
+        "role": row[4],
+        "clinic_id": row[5],
+        "created_at": row[6],
+    }
