@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, EmailStr
 from app.database import conn
 
+
 router = APIRouter(prefix="/users", tags=["Users"])
 
 # -------------------------
@@ -51,3 +52,31 @@ def create_user(user: UserCreate):
     conn.commit()
 
     return {"id": new_id, **user.dict()}
+
+# -------------------------
+# GET /users  (Create User)
+# -------------------------
+
+@router.get("/")
+def get_users():
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, full_name, email, phone_number, role, clinic_id, created_at
+        FROM users
+        ORDER BY id ASC;
+    """)
+    rows = cursor.fetchall()
+    cursor.close()
+
+    return [
+        {
+            "id": r[0],
+            "full_name": r[1],
+            "email": r[2],
+            "phone_number": r[3],
+            "role": r[4],
+            "clinic_id": r[5],
+            "created_at": r[6],
+        }
+        for r in rows
+    ]
